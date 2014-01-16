@@ -1,0 +1,106 @@
+#!/bin/sh
+#desc:Background music service
+#package:music
+#type:local
+
+CONFILE=/etc/opendomo/music.conf
+. $CONFILE
+MPG123="/usr/bin/mpg123 -R --fifo $TMPFILE >$INFFILE"
+IFS=$'\x0A'$'\x0D'
+
+# Interface parameters
+if test -e $TMPCTLPARM; then
+	. $TMPCTLPARM
+fi
+
+start () {
+	if ! test -e $PID; then
+		# Generate temporal database necessary for default album
+		rm -f $TMPDATABASE 2>/dev/null
+		for drive in `ls -1 /media/`; do
+			DB="/media/$drive/$MUSICDB"
+			if test -f "$DB"; then
+				cat $DB  >>$TMPDATABASE
+	 		fi
+ 		done
+
+		# Create a new files if not exist
+		touch $TMPPLAYED $TMPCURRENT $PID $INFFILE
+		chown admin:admin $TMPPLAYED $TMPCURRENT $PID $INFFILE
+		chmod a+w $TMPPLAYED $TMPCURRENT $PID $INFFILE
+
+		# If running as root, it is necessary to start as admin
+		if test "$USER" = "root"; then
+			sudo -u admin /usr/bin/bgshell "$MPG123"
+		else
+			/usr/bin/bgshell "$MPG123"
+		fi
+
+		# if pending file don't exist, add default album
+		if ! test -f $TMPPENDING; then
+			SONGS=`cat "$TMPDATABASE" | grep "($ALBUM)" | grep -v "cover" | cut -f2 -d[ | cut -f1 -d]`
+			for song in "$SONGS"; do
+				echo "$song"    >> $TMPPENDING
+			done
+
+			# Change pending file permissions
+			chown admin:admin $TMPPENDING
+			chmod a+w $TMPPENDING
+		fi
+
+		# if mpg123 is playing something just change the songs list
+		if test "MPG123" == "`tail -n1 $INFFILE  | cut -f2 -d" "`"; then
+
+	        	# change to the first song of the new list
+			/usr/local/opendomo/musicNext.sh
+		else
+
+			# Start the feed script to mpg123
+			/usr/bin/bgshell "/usr/local/opendomo/musicFeedPlayer.sh"
+		fi
+	fi
+}
+
+stop () {
+	# Stop service and delete temporal files
+	killall -TERM mpg123 2>/dev/null
+	rm -f $PID $TMPFILE $TMPPENDING $TMPCURRENT $TMPPLAYED $TMPLAST	$INFFILE 2>/dev/null
+}
+
+restart () {
+        stop
+        start
+}
+
+status () {
+	  if ! test -e $PID; then
+                        echo "music not running"
+                        exit 1
+                else
+                        echo "music is running"
+                        exit 0
+          fi
+}
+
+
+case "$1" in
+  start)
+        start
+        ;;
+  stop)
+        stop
+        ;;
+  restart)
+        restart
+        ;;
+  status)
+	status
+	;;
+  *)
+        echo "Usage: $0 {start|stop|restart|status}"
+        exit 1
+	;;
+esac
+
+exit $?
+
