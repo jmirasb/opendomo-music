@@ -1,7 +1,19 @@
-#!/bin/sh
-#desc:Background music service
-#package:music
-#type:local
+#! /bin/sh
+### BEGIN INIT INFO
+# Provides:          music
+# Required-Start:    alsa-utils
+# Required-Stop:
+# Should-Start:      glibc
+# Default-Start:     1 2 3 4 5
+# Default-Stop:      0 6
+# Short-Description: Background music service
+# Description:       Play default configured music in background
+#
+### END INIT INFO
+### Copyright(c) 2014 OpenDomo Services SL. Licensed under GPL v3 or later
+
+. /lib/init/vars.sh
+. /lib/lsb/init-functions
 
 CONFILE=/etc/opendomo/music.conf
 . $CONFILE
@@ -13,7 +25,7 @@ if test -e $TMPCTLPARM; then
 	. $TMPCTLPARM
 fi
 
-start () {
+do_start () {
 	if ! test -e $PID; then
 		# Generate temporal database necessary for default album
 		rm -f $TMPDATABASE 2>/dev/null
@@ -29,12 +41,8 @@ start () {
 		chown admin:admin $TMPPLAYED $TMPCURRENT $PID $INFFILE
 		chmod a+w $TMPPLAYED $TMPCURRENT $PID $INFFILE
 
-		# If running as root, it is necessary to start as admin
-		if test "$USER" = "root"; then
-			sudo -u admin /usr/bin/bgshell "$MPG123"
-		else
-			/usr/bin/bgshell "$MPG123"
-		fi
+		# Running player
+		/usr/bin/bgshell "$MPG123"
 
 		# if pending file don't exist, add default album
 		if ! test -f $TMPPENDING; then
@@ -61,18 +69,13 @@ start () {
 	fi
 }
 
-stop () {
+do_stop () {
 	# Stop service and delete temporal files
 	killall -TERM mpg123 2>/dev/null
 	rm -f $PID $TMPFILE $TMPPENDING $TMPCURRENT $TMPPLAYED $TMPLAST	$INFFILE 2>/dev/null
 }
 
-restart () {
-        stop
-        start
-}
-
-status () {
+do_status () {
 	  if ! test -e $PID; then
                         echo "music not running"
                         exit 1
@@ -82,25 +85,28 @@ status () {
           fi
 }
 
-
 case "$1" in
-  start)
-        start
+  start|"")
+	do_start
+        ;;
+  restart|reload|force-reload)
+	do_start
+	do_stop
+        exit 3
         ;;
   stop)
-        stop
-        ;;
-  restart)
-        restart
-        ;;
+	do_stop
+        exit 3
+	;;
   status)
-	status
-	;;
+        do_status
+        exit $?
+        ;;
   *)
-        echo "Usage: $0 {start|stop|restart|status}"
-        exit 1
-	;;
+        echo "Usage: music [start|stop|restart|status]" >&2
+        exit 3
+        ;;
 esac
 
-exit $?
+:
 
