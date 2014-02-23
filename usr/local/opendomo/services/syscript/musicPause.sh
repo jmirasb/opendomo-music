@@ -8,7 +8,7 @@ CONFILE=/etc/opendomo/music.conf
 
 # If music is running we pause/unpause it
 if test -e $PID; then
-	echo "PAUSE"	> $TMPFILE
+    echo "PAUSE"	> $TMPFILE
 fi
 
 # Always return to music web controler

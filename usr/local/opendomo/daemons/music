@@ -18,95 +18,93 @@
 CONFILE=/etc/opendomo/music.conf
 . $CONFILE
 MPG123="/usr/bin/mpg123 -R --fifo $TMPFILE >$INFFILE"
+BGSHELL="/usr/local/bin/bgshell"
 IFS=$'\x0A'$'\x0D'
 
 # Interface parameters
 if test -e $TMPCTLPARM; then
-	. $TMPCTLPARM
+    . $TMPCTLPARM
 fi
 
 do_start () {
-	if ! test -e $PID; then
-		# Generate temporal database necessary for default album
-		rm -f $TMPDATABASE 2>/dev/null
-		for drive in `ls -1 /media/`; do
-			DB="/media/$drive/$MUSICDB"
-			if test -f "$DB"; then
-				cat $DB  >>$TMPDATABASE
-	 		fi
- 		done
+    if ! test -e $PID; then
+        # Generate temporal database necessary for default album
+        rm -f $TMPDATABASE 2>/dev/null
+        for drive in `ls -1 /media/`; do
+            DB="/media/$drive/$MUSICDB"
+            if test -f "$DB"; then
+                cat $DB  >>$TMPDATABASE
+            fi
+        done
 
-		# Create a new files if not exist
-		touch $TMPPLAYED $TMPCURRENT $PID $INFFILE
-		chown admin:admin $TMPPLAYED $TMPCURRENT $PID $INFFILE
-		chmod a+w $TMPPLAYED $TMPCURRENT $PID $INFFILE
+        # Create a new files if not exist
+        touch $TMPPLAYED $TMPCURRENT $PID $INFFILE
+        chown admin:admin $TMPPLAYED $TMPCURRENT $PID $INFFILE
+        chmod a+w $TMPPLAYED $TMPCURRENT $PID $INFFILE
 
-		# Running player
-		/usr/bin/bgshell "$MPG123"
+        # Running player
+        $BGSHELL "$MPG123"
 
-		# if pending file don't exist, add default album
-		if ! test -f $TMPPENDING; then
-			SONGS=`cat "$TMPDATABASE" | grep "($ALBUM)" | grep -v "cover" | cut -f2 -d[ | cut -f1 -d]`
-			for song in "$SONGS"; do
-				echo "$song"    >> $TMPPENDING
-			done
+        # if pending file don't exist, add default album
+        if ! test -f $TMPPENDING; then
+            SONGS=`cat "$TMPDATABASE" | grep "($ALBUM)" | grep -v "cover" | cut -f2 -d[ | cut -f1 -d]`
+            for song in "$SONGS"; do
+                echo "$song"    >> $TMPPENDING
+            done
 
-			# Change pending file permissions
-			chown admin:admin $TMPPENDING
-			chmod a+w $TMPPENDING
-		fi
+            # Change pending file permissions
+            chown admin:admin $TMPPENDING
+            chmod a+w $TMPPENDING
+        fi
 
-		# if mpg123 is playing something just change the songs list
-		if test "MPG123" == "`tail -n1 $INFFILE  | cut -f2 -d" "`"; then
-
-	        	# change to the first song of the new list
-			/usr/local/opendomo/musicNext.sh
-		else
-
-			# Start the feed script to mpg123
-			/usr/bin/bgshell "/usr/local/opendomo/musicFeedPlayer.sh"
-		fi
-	fi
+        # if mpg123 is playing something just change the songs list
+        if test "MPG123" == "`tail -n1 $INFFILE  | cut -f2 -d" "`"; then
+            # change to the first song of the new list
+            /usr/local/opendomo/musicNext.sh
+        else
+            # Start the feed script to mpg123
+            $BGSHELL "/usr/local/opendomo/musicFeedPlayer.sh"
+        fi
+    fi
 }
 
 do_stop () {
-	# Stop service and delete temporal files
-	killall -TERM mpg123 2>/dev/null
-	rm -f $PID $TMPFILE $TMPPENDING $TMPCURRENT $TMPPLAYED $TMPLAST	$INFFILE 2>/dev/null
+    # Stop service and delete temporal files
+    killall -TERM mpg123 2>/dev/null
+    rm -f $PID $TMPFILE $TMPPENDING $TMPCURRENT $TMPPLAYED $TMPLAST	$INFFILE 2>/dev/null
 }
 
 do_status () {
-	  if ! test -e $PID; then
-                        echo "music not running"
-                        exit 1
-                else
-                        echo "music is running"
-                        exit 0
-          fi
+    if ! test -e $PID; then
+        echo "music not running"
+            exit 1
+        else
+            echo "music is running"
+            exit 0
+    fi
 }
 
 case "$1" in
-  start|"")
-	do_start
+    start|"")
+        do_start
         ;;
-  restart|reload|force-reload)
-	do_start
-	do_stop
+    restart|reload|force-reload)
+        do_start
+        do_stop
         exit 3
         ;;
-  stop)
-	do_stop
+    stop)
+        do_stop
         exit 3
-	;;
-  status)
+        ;;
+    status)
         do_status
         exit $?
         ;;
-  *)
+    *)
         echo "Usage: music [start|stop|restart|status]" >&2
         exit 3
         ;;
 esac
 
 :
-

@@ -12,17 +12,17 @@ echo -n "" >$TMPPENDING
 # Convert cover parameter in album with multiple album support
 for cover in "$@"; do
 
-	# Create a new pending file with all select files
-	ALBUM=`cat $TMPDATABASE | grep "$cover" | cut -f2 -d"(" | cut -f1 -d")" | uniq`
-	SONGS=`cat "$TMPDATABASE" | grep "($ALBUM)" | grep -v "cover" | cut -f2 -d[ | cut -f1 -d] | sort`
+    # Create a new pending file with all select files
+    ALBUM=`cat $TMPDATABASE | grep "$cover" | cut -f2 -d"(" | cut -f1 -d")" | uniq`
+    SONGS=`cat "$TMPDATABASE" | grep "($ALBUM)" | grep -v "cover" | cut -f2 -d[ | cut -f1 -d] | sort`
 
-	for song in "$SONGS"; do
-		echo "$song" >> $TMPPENDING
-	done
+    for song in "$SONGS"; do
+        echo "$song" >> $TMPPENDING
+    done
 done
 
 # Start music service
-/etc/init.d/music start
+/usr/local/opendomo/daemons/music start
 
 # Wait a moment, please ... for player start
 sleep 2
