@@ -17,7 +17,14 @@
 
 CONFILE=/etc/opendomo/music.conf
 . $CONFILE
-MPG123="/usr/bin/mpg123 -R --fifo $TMPFILE >$INFFILE"
+SNDFILE=/etc/opendomo/sound.conf
+# Testing experimental multi card supoort
+if test -f $SNDFILE; then
+    . $SNDFILE
+    MPG123="/usr/bin/mpg123 --audiodevice "$CARDNAME" -R --fifo $TMPFILE >$INFFILE"
+else
+    MPG123="/usr/bin/mpg123 -R --fifo $TMPFILE >$INFFILE"
+fi
 BGSHELL="/usr/local/bin/bgshell"
 IFS=$'\x0A'$'\x0D'
 

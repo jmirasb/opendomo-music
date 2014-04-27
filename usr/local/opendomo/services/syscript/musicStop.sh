@@ -8,7 +8,7 @@ CONFILE=/etc/opendomo/music.conf
 
 # If music is running we stop it
 if test -e $PID; then
-    /usr/local/opendomo/daemons/music stop
+    sudo changestate.sh service music off
 fi
 
 # Always return to music web controler

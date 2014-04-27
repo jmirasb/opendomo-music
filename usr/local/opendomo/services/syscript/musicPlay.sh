@@ -22,10 +22,10 @@ for cover in "$@"; do
 done
 
 # Start music service
-/usr/local/opendomo/daemons/music start
+sudo changestate.sh service music on
 
 # Wait a moment, please ... for player start
-sleep 2
+sleep 3
 
 # Always return to music web controler
 /usr/local/opendomo/musicControl.sh

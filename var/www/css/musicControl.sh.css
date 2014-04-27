@@ -1,0 +1,19 @@
+.imgframe img, .video {
+    max-width: 200px;
+    max-height: 200px;
+}
+
+.iconlist ul .file {
+    background: none;
+    border: 2px solid #CCC;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+    border-top-left-radius: 0px;
+    border-top-right-radius: 0px;
+}
+
+.iconlist ul li {
+    background: none;
+    max-width: 250px;
+    max-height: 250px;
+}
