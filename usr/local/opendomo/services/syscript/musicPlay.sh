@@ -27,6 +27,7 @@ web_interface () {
     echo "#> Playing now ..."
     echo "list:`basename $0`	iconlist"
     echo "	$COVER	 	file image"
+    echo "actions:"
     echo
     /usr/local/opendomo/musicOptions.sh
 }
