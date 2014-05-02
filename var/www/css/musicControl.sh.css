@@ -1,19 +1,56 @@
-.imgframe img, .video {
-    max-width: 200px;
-    max-height: 200px;
+#musicPlay_div {
+    width: 27%;
+    display:inline-block;
+    vertical-align: top;
+    overflow: hidden;
 }
 
-.iconlist ul .file {
+#musicOptions_div {
+    width: 72%;
+    display:inline-block;
+    vertical-align: top;
+    overflow: hidden;
+}
+
+p {
+    font-weight: bold;
+}
+
+.listbox li, .detailed li, .selectable li {
     background: none;
-    border: 2px solid #CCC;
+}
+
+.iconlist ul#musicPlay .file {
+    background: none;
+    border: 0px solid #CCC;
+    border-bottom-left-radius: 0px;
+    border-bottom-right-radius: 0px;
+    border-top-left-radius: 0px;
+    border-top-right-radius: 0px;
+}
+
+.iconlist ul#musicPlay li {
+    background: none;
+    max-width: 230px;
+    max-height: 230px;
+}
+
+.iconlist ul#musicControl .file {
+    background: none;
+    border: 1px solid #CCC;
     border-bottom-left-radius: 10px;
     border-bottom-right-radius: 10px;
     border-top-left-radius: 0px;
     border-top-right-radius: 0px;
 }
 
-.iconlist ul li {
+.iconlist ul#musicControl li {
     background: none;
-    max-width: 250px;
-    max-height: 250px;
+    max-width: 300px;
+    max-height: 300px;
+}
+
+.imgframe img {
+    max-width: 245px;
+    max-height: 245px;
 }

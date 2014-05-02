@@ -1,31 +1,68 @@
 #!/bin/sh
-#desc:Start a playlist in mpg123
+#desc:Play music
 #package:odmusic
 #type:local
 
-CONFIGFILE="/etc/opendomo/music.conf"
-. $CONFIGFILE
+MPDCONFILE="/etc/opendomo/system/mpd.conf"
+MPDPIDFILE="/var/opendomo/run/mpd.pid"
+MUSICFOLDER=`grep  music_directory $MPDCONFILE | awk '{print $2}' | sed 's/\/media\///' | tr -d "\""`
+TMPCTLPARM="/var/opendomo/tmp/music.tmp"
+COVERCACHE="/var/opendomo/tmp/musiccover.cache"
+MUSICPID="/var/opendomo/run/musicplayer.pid"
 
-# Clean pending songs list
-echo -n "" >$TMPPENDING
+MPCCOMMAND="/usr/bin/mpc"
+ODPCOMMAND="/usr/local/opendomo/bin/musicPlayer.sh"
 
-# Convert cover parameter in album with multiple album support
-for cover in "$@"; do
+IFS=$'\x0A'$'\x0D'
+VOL="0,10,20,30,40,50,60,70,80,90,100"
 
-    # Create a new pending file with all select files
-    ALBUM=`cat $TMPDATABASE | grep "$cover" | cut -f2 -d"(" | cut -f1 -d")" | uniq`
-    SONGS=`cat "$TMPDATABASE" | grep "($ALBUM)" | grep -v "cover" | cut -f2 -d[ | cut -f1 -d] | sort`
+web_interface () {
+    cd /media
+    SONG=`$MPCCOMMAND current | sed 's/ - /-/' | cut -f2 -d-`
+    ARTIST=`$MPCCOMMAND current | sed 's/ - /-/' | cut -f1 -d-`
+    SONGPATH=`$MPCCOMMAND find Title "$SONG" Artist "$ARTIST" | head -n1`
+    COVER=`dirname "$MUSICFOLDER/$SONGPATH"`/cover.jpg
 
-    for song in "$SONGS"; do
-        echo "$song" >> $TMPPENDING
+    # Web interface
+    echo "#> Playing now ..."
+    echo "list:`basename $0`	iconlist"
+    echo "	$COVER	 	file image"
+    echo
+    /usr/local/opendomo/musicOptions.sh
+}
+
+if test -z $1 && [ `$MPCCOMMAND status | head -n2 | tail -n1 | awk '{print $1}'` = "[playing]" ]; then
+    # Actual play (play)
+    web_interface
+
+elif test -z $1 && [ `$MPCCOMMAND status | head -n2 | tail -n1 | awk '{print $1}'` = "[paused]" ]; then
+    # Actual play (paused)
+    web_interface
+
+elif ! test -z $1 && test -f $MPDPIDFILE; then
+    # Extract artist and albums
+    ARTIST=`grep ARTIST $TMPCTLPARM | cut -f2 -d=`
+
+    # Suport multiple albums
+    for cover in "$@"; do
+        ALBUM=`grep $cover $COVERCACHE | cut -f1 -d= | uniq`
+        if test -z "$ALBUMS"; then
+            ALBUMS="$ARTIST/$ALBUM"
+        else
+            ALBUMS="$ALBUMS;$ARTIST/$ALBUM"
+        fi
     done
-done
 
-# Start music service
-sudo changestate.sh service music on
+    # Start play
+    /usr/local/opendomo/bin/musicPlayer.sh play "$ALBUMS" #&>/dev/null
+    web_interface
 
-# Wait a moment, please ... for player start
-sleep 3
+elif test -z "$1"; then
+    echo "#ERRO You need select album"
+    /usr/local/opendomo/musicControl.sh
 
-# Always return to music web controler
-/usr/local/opendomo/musicControl.sh
+elif ! test -f "$MPDPIDFILE"; then
+    echo "#ERRO Music player daemon is not started"
+    /usr/local/opendomo/musicControl.sh
+
+fi

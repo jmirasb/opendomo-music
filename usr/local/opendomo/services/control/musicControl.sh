@@ -4,94 +4,75 @@
 #type:local
 
 CONFIGFILE="/etc/opendomo/music.conf"
-VOL="0,10,20,30,40,50,60,70,80,90,100"
+MPDCONFILE="/etc/opendomo/system/mpd.conf"
+TMPCTLPARM="/var/opendomo/tmp/music.tmp"
+COVERCACHE="/var/opendomo/tmp/musiccover.cache"
+
+MPCCOMMAND="/usr/bin/mpc"
+MUSICFOLDER=`grep  music_directory $MPDCONFILE | awk '{print $2}' | sed 's/\/media\///' | tr -d "\""`
+
 IFS=$'\x0A'$'\x0D'
+VOL="0,10,20,30,40,50,60,70,80,90,100"
 
-# Extract variables to config file
-. $CONFIGFILE
+# Checking configuration and daemon
+if ! test -d "/media/$MUSICFOLDER"; then
+    /usr/local/opendomo/musicConfigure.sh
 
-# If PID exist, see actual play. If not playing, select play interface
-if test -e $PID; then
-    # Configure play variables and clean temporal parameters, isn't necessary anymore.
-    . $PID
-    rm $TMPCTLPARM 2>/dev/null
-
-    # Extract song name from tag and cover to see in web interface
-    MP3=`cat $TMPCURRENT`
-    SONG=`cat $TMPDATABASE | grep "$MP3" | cut -f2 -d"{" | cut -f1 -d"}" | uniq`
-    COVER=`echo $COVER | sed "s/\/media\///g"`
-
-    # Select volume level and change
-    if ! test -z "$2"; then
-        VOLUME="$2"
-    fi
-    /usr/local/opendomo/musicVolume.sh $VOLUME
-
-    # Web interface
-    echo "#> Playing now..."
-    echo "list:`basename $0`	iconlist"
-    echo "	$COVER	$ARTIST - $ALBUM - $SONG	file image"
-    echo "actions:"
-    echo "	musicPrev.sh	<<<<"
-    echo "	musicStop.sh	Stop"
-    echo "	musicPause.sh	Pause"
-    echo "	musicNext.sh	>>>>"
-    echo
-    echo "#> Playing options"
-    echo "form:`basename $0`"
-    echo "	VOLUME	Volume level	subcommand[$VOL]	$VOLUME"
-    echo "actions:"
-    echo
+elif [ `$MPCCOMMAND status | head -n2 | tail -n1 | awk '{print $1}'` = "[playing]" ]; then
+    # Play is started
+    /usr/local/opendomo/musicPlay.sh
+elif [ `$MPCCOMMAND status | head -n2 | tail -n1 | awk '{print $1}'` = "[paused]" ]; then
+    # Play is paused
+    /usr/local/opendomo/musicPlay.sh
 
 else
-    # Check media scanner is running.
-    SCANNERPID=`ls -1 /var/run/ | grep -m1 -c musicscanner.pid`
-    if test "$SCANNERPID" == "1"; then
-        echo "#WARN Media scanner is working, database isn't complete"
-    fi
-
-    # Update select option parameters and save in temporal file
-    touch $TMPCTLPARM
-    if ! test -z "$2"; then
-        OPTIONS=`cat "$TMPCTLPARM" | grep -v $1`
-        echo "$OPTIONS"			 >$TMPCTLPARM
-        echo "$1=\"$2\""		>>$TMPCTLPARM
-    fi
-
-    # Search available databases and sort music in temporal database
-    # TODO: Is necessary clean duplicate albums, same album in diferent drives
-    rm -f $TMPDATABASE 2>/dev/null
-    touch $TMPDATABASE
-
-    for drive in `ls -1 /media/`; do
-        DB="/media/$drive/$MUSICDB"
-        if test -f "$DB"; then
-            cat $DB  >>$TMPDATABASE
-        fi
-    done
-    sort "$TMPDATABASE" -o "$TMPDATABASE"
-
-    # List artist from temporal database
-    for artist in `cat $TMPDATABASE | grep "cover.jpg" | cut -f2 -d"\"" | uniq`; do
-        if test "$artist"; then
-             if test -z $ARTLIST; then
-                 ARTLIST="$artist"
-             else
-                 ARTLIST="$ARTLIST","$artist"
-             fi
+    # Creating artist list
+    for artist in `$MPCCOMMAND ls`; do
+        if test -z $ARTLIST; then
+            ARTLIST="$artist"
+        else
+            ARTLIST="$ARTLIST","$artist"
         fi
     done
 
-    # Extract temporal config and album list
-    ARTIST=`cat $TMPDATABASE | grep "($ALBUM)" | grep cover | cut -f2 -d"\"" | uniq`
-    . $TMPCTLPARM
-    ALBUMS=`cat $TMPDATABASE | grep "\"$ARTIST\"" | cut -f2 -d"(" | cut -f1 -d")" | uniq`
+    # Checking mpd database
+    if test -z $ARTLIST; then
+        # Database is emply, updating
+        echo "#WARN Updating database, isn't complete"
+        $MPCCOMMAND update
 
-    # Check a album list, if albums parameter is void, isn't valid artist, select first database artist
-    if test -z "$ALBUMS"; then
-        ARTIST=`head -n1 "$TMPDATABASE"  | cut -f2 -d"\""`
-        ALBUMS=`cat $TMPDATABASE | grep "\"$ARTIST\"" | cut -f2 -d"(" | cut -f1 -d")" | uniq`
+    elif [ `$MPCCOMMAND status | head -n1 | awk '{print $1}'` = "Updating" ]; then
+        # Database isn't complete yet
+        echo "#WARN The database is updating, isn't complete"
     fi
+
+    # Updating variables
+    if ! test -z "$2" && test -f $TMPCTLPARM; then
+        # Modifing parameter
+        OPTIONS=`grep -v $1 $TMPCTLPARM`
+        echo "$OPTIONS"     > $TMPCTLPARM
+        echo "$1=$2"       >> $TMPCTLPARM
+
+    elif ! test -f $TMPCTLPARM && [ `head -n1 "$CONFIGFILE" | cut -f1 -d=` != "no_configured" ]; then
+        # Updating temporal file with default configuration
+        echo "ARTIST=`grep ALBUM $CONFIGFILE | cut -f2 -d= | cut -f1 -d"/"`" >$TMPCTLPARM
+        echo "RDM=`grep RDM $CONFIGFILE | cut -f2 -d=`"                     >>$TMPCTLPARM
+        echo "LOOP=`grep LOOP $CONFIGFILE | cut -f2 -d=`"                   >>$TMPCTLPARM
+        echo "VOLUME=`grep VOLUME $CONFIGFILE | cut -f2 -d=`"               >>$TMPCTLPARM
+
+    elif ! test -f $TMPCTLPARM; then
+
+        # Creating temporal config file
+	echo "ARTIST=`echo $ARTLIST | cut -f1 -d,`"    > $TMPCTLPARM
+        echo "RDM=off"	                              >> $TMPCTLPARM
+        echo "LOOP=off"	                              >> $TMPCTLPARM
+        echo "VOLUME=100"                             >> $TMPCTLPARM
+    fi
+
+    ARTIST=`grep ARTIST $TMPCTLPARM | cut -f2 -d=`
+    RDM=`grep RDM $TMPCTLPARM | cut -f2 -d=`
+    LOOP=`grep LOOP $TMPCTLPARM | cut -f2 -d=`
+    VOLUME=`grep VOLUME $TMPCTLPARM | cut -f2 -d=`
 
     # Web interface
     echo "#> Configure options"
@@ -102,18 +83,24 @@ else
     echo "	LOOP	Continuos mode	subcommand[on,off]	$LOOP"
     echo "	VOLUME	Volume level	subcommand[$VOL]	$VOLUME"
     echo
+
+    # Creating list of albums
+    cd /media
     echo "#> Select album"
     echo "list:`basename $0`	iconlist"
-    for album in $ALBUMS; do
-        DBCOVER=`cat $TMPDATABASE | grep "($album)" | grep cover.jpg | cut -f2 -d[ | cut -f1 -d] | uniq`
-        COVER=`echo $DBCOVER | sed "s/\/media\///g"`
-        NAME=`echo ${album:0:30} ...`
+    for album in `$MPCCOMMAND ls "$ARTIST"`; do
+	# Find album and cover
+        ALBUM=`echo $album | cut -f2 -d"/"`
+        COVER=`find "$MUSICFOLDER" -name $ALBUM | tail -n1`/cover.jpg
 
-        echo "	$COVER	$NAME	file image"
+        # Saving cover cache
+        echo "$ALBUM=$COVER" >> $COVERCACHE
+
+	echo "	$COVER	$ALBUM	file image"
     done
     echo "actions:"
     echo "	musicPlay.sh	Play music"
     echo "	musicSave.sh	Save config"
-    echo "	musicUpdateDB.sh	Update database"
+    echo "	musicConfigure.sh	Configure daemon"
     echo
 fi

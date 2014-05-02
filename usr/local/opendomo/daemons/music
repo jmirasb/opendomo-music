@@ -15,85 +15,48 @@
 . /lib/init/vars.sh
 . /lib/lsb/init-functions
 
-CONFILE=/etc/opendomo/music.conf
-. $CONFILE
-SNDFILE=/etc/opendomo/sound.conf
-# Testing experimental multi card supoort
-if test -f $SNDFILE; then
-    . $SNDFILE
-    MPG123="/usr/bin/mpg123 --audiodevice "$CARDNAME" -R --fifo $TMPFILE >$INFFILE"
-else
-    MPG123="/usr/bin/mpg123 -R --fifo $TMPFILE >$INFFILE"
-fi
-BGSHELL="/usr/local/bin/bgshell"
-IFS=$'\x0A'$'\x0D'
-
-# Interface parameters
-if test -e $TMPCTLPARM; then
-    . $TMPCTLPARM
-fi
+MUSICPID="/var/opendomo/run/musicplayer.pid"
+CONFIGFILE="/etc/opendomo/music.conf"
+MPDPIDFILE="/var/opendomo/run/mpd.pid"
+ODPCOMMAND="/usr/local/opendomo/bin/musicPlayer.sh"
 
 do_start () {
-    if ! test -e $PID; then
-        # Generate temporal database necessary for default album
-        rm -f $TMPDATABASE 2>/dev/null
-        for drive in `ls -1 /media/`; do
-            DB="/media/$drive/$MUSICDB"
-            if test -f "$DB"; then
-                cat $DB  >>$TMPDATABASE
-            fi
-        done
+    if test -f $MPDPIDFILE && [ `head -n1 "$CONFIGFILE" | cut -f1 -d=` != "no_configured" ]; then
+        # Extract configuration
+        ARTIST=`grep ALBUM $CONFIGFILE | cut -f2 -d=`"
+        RDM=`grep RDM $CONFIGFILE | cut -f2 -d=`"
+        LOOP=`grep LOOP $CONFIGFILE | cut -f2 -d=`"
+        VOLUME=`grep VOLUME $CONFIGFILE | cut -f2 -d=`"
 
-        # Create a new files if not exist
-        touch $TMPPLAYED $TMPCURRENT $PID $INFFILE
-        chown admin:admin $TMPPLAYED $TMPCURRENT $PID $INFFILE
-        chmod a+w $TMPPLAYED $TMPCURRENT $PID $INFFILE
-
-        # Running player
-        $BGSHELL "$MPG123"
-
-        # if pending file don't exist, add default album
-        if ! test -f $TMPPENDING; then
-            SONGS=`cat "$TMPDATABASE" | grep "($ALBUM)" | grep -v "cover" | cut -f2 -d[ | cut -f1 -d]`
-            for song in "$SONGS"; do
-                echo "$song"    >> $TMPPENDING
-            done
-
-            # Change pending file permissions
-            chown admin:admin $TMPPENDING
-            chmod a+w $TMPPENDING
-        fi
-
-        # if mpg123 is playing something just change the songs list
-        if test "MPG123" == "`tail -n1 $INFFILE  | cut -f2 -d" "`"; then
-            # change to the first song of the new list
-            /usr/local/opendomo/musicNext.sh
-        else
-            # Start the feed script to mpg123
-            $BGSHELL "/usr/local/opendomo/musicFeedPlayer.sh"
-        fi
+        # Configure player & start
+	$ODPCOMMAND random $RDM    &>/dev/null
+	$ODPCOMMAND loop $LOOP     &>/dev/null
+	$ODPCOMMAND volume $VOLUME &>/dev/null
+	$ODPCOMMAND play "$ARTIST" &>/dev/null
     fi
 }
 
 do_stop () {
-    # Stop service and delete temporal files
-    killall -TERM mpg123 2>/dev/null
-    rm -f $PID $TMPFILE $TMPPENDING $TMPCURRENT $TMPPLAYED $TMPLAST	$INFFILE 2>/dev/null
+    if test -f $MUSICPID; then
+        $ODPCOMMAND stop &>/dev/null
+    fi
 }
 
 do_status () {
-    if ! test -e $PID; then
+    if ! test -f $MUSICPID; then
         echo "music not running"
-            exit 1
-        else
-            echo "music is running"
-            exit 0
+        exit 1
+    else
+        echo "music is running"
+        exit 0
     fi
 }
 
 case "$1" in
     start|"")
+        log_daemon_msg "Starting opendomo music player"
         do_start
+        log_end_msg $?
         ;;
     restart|reload|force-reload)
         do_start
@@ -101,7 +64,9 @@ case "$1" in
         exit 3
         ;;
     stop)
+        log_daemon_msg "Stoping opendomo music player"
         do_stop
+        log_end_msg $?
         exit 3
         ;;
     status)
