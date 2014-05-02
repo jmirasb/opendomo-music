@@ -1,14 +1,14 @@
 #musicPlay_div {
     width: 27%;
     display:inline-block;
-    vertical-align: top;
+    vertical-align: center;
     overflow: hidden;
 }
 
 #musicOptions_div {
     width: 72%;
     display:inline-block;
-    vertical-align: top;
+    vertical-align: center;
     overflow: hidden;
 }
 
@@ -53,4 +53,23 @@ p {
 .imgframe img {
     max-width: 245px;
     max-height: 245px;
+}
+
+legend#musicOptions_lgnd {
+    color: #FFF;
+    border: 0px;
+}
+
+fieldset.tabform {
+    background: none;
+    border-radius: 0px 0px 0px;
+}
+
+fieldset.iconlist {
+    background: none;
+    border-radius: 0px 0px 0px;
+}
+
+.toolbar {
+    border-radius: 0px 0px 0px;
 }

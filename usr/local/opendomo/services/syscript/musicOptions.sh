@@ -20,7 +20,8 @@ fi
 
 # Actual status
 STATUS=`$MPCCOMMAND status | tail -n2 | head -n1 | cut -f2 -d[ | cut -f1 -d]`
-SONG=`$MPCCOMMAND status | head -n1 | cut -f2 -d- | sed 's/ //'`
+SONG=`$MPCCOMMAND current | cut -f2 -d- | sed 's/ //'`
+TRACK=`$MPCCOMMAND status | tail -n2 | head -n1 | cut -f2 -d" "`
 ARTIST=`$MPCCOMMAND status | head -n1 | cut -f1 -d-`
 if [ `$MPCCOMMAND volume | cut -f2 -d:| tr -d %` == "100" ]; then
     LOOP=`$MPCCOMMAND status | tail -n1 | awk '{print $3}'`
@@ -31,12 +32,10 @@ else
     RDM=`$MPCCOMMAND status | tail -n1 | awk '{print $6}'`
     VOLUME=`$MPCCOMMAND volume | cut -f2 -d:| sed 's/ //' | tr -d %`
 fi
-
-# Web interface
 echo "#> Player Options"
 echo "form:`basename $0`"
 echo "	ARTIST	Artist	readonly	$ARTIST"
-echo "	SONG	Song	readonly	$SONG"
+echo "	SONG	Song	readonly	$TRACK $SONG"
 echo "	status	Player status	readonly	$STATUS"
 echo "	RDM	Random	subcommand[on,off]	$RDM"
 echo "	LOOP	Continuos mode	subcommand[on,off]	$LOOP"
