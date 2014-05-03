@@ -31,6 +31,13 @@ else
     echo "#INFO Configuration saved"
     PARAMETER="$1"
     VALUE="$2"
+
+    # Change value
+    if [ "$VALUE" == "on" ]; then
+	VALUE="yes"
+    elif [ "$VALUE" == "off" ]; then
+        VALUE="no"
+    fi
     CONFIG=`grep -v $PARAMETER $MPDCONFILE`
     echo "$CONFIG" 		  > $MPDCONFILE
     echo "$PARAMETER \"$VALUE\"" >> $MPDCONFILE
