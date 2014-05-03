@@ -100,6 +100,7 @@ else
     done
     echo "actions:"
     echo "	musicPlay.sh	Play music"
+    echo "	musicSearch.sh	Search"
     echo "	musicSave.sh	Save config"
     echo "	musicConfigure.sh	Configure daemon"
     echo
