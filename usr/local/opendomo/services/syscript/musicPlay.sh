@@ -53,7 +53,7 @@ elif ! test -z $1 && test -f $MPDPIDFILE; then
             if test -z "$TOPLAY"; then
                 TOPLAY="$ARTIST/$ALBUM"
             else
-                TOPLAY="$ALBUMS;$ARTIST/$ALBUM"
+                TOPLAY="$TOPLAY;$ARTIST/$ALBUM"
             fi
         done
     else
